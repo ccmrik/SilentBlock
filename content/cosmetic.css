@@ -208,14 +208,74 @@ iframe[id^="google_ads_"] {
   display: none !important;
 }
 
-/* Restore scroll when paywalls use overflow:hidden on body */
+/* === Anti-adblock walls and overlays === */
+[class*="adblock"],
+[id*="adblock"],
+[class*="ad-block"],
+[id*="ad-block"],
+[class*="adblocker"],
+[id*="adblocker"],
+[class*="ad-blocker"],
+[id*="ad-blocker"],
+[class*="adblock-modal"],
+[class*="adblock-overlay"],
+[class*="adblock-notice"],
+[class*="adblock-wrapper"],
+[class*="adblock-detected"],
+[class*="adblock-wall"],
+[class*="adblock-message"],
+[class*="anti-adblock"],
+[id*="anti-adblock"],
+[class*="blocker-notice"],
+[class*="blocker-overlay"],
+[class*="blocker-modal"],
+[class*="blockadblock"],
+[id*="blockadblock"],
+[class*="detect-ab"],
+[id*="detect-ab"],
+[class*="ab-message"],
+[id*="ab-message"],
+[class*="adblk"],
+[id*="adblk"],
+#adblock-placeholder,
+#ad-blocker-notice,
+.AdblockMessage,
+.adblock-msg,
+.adb-overlay,
+.adb-modal,
+.adb-banner,
+.adblock-bg,
+.adblock-popup,
+.adblock-nag {
+  display: none !important;
+}
+
+/* === Overlays and backdrops used by anti-adblock scripts === */
+div[style*="z-index"][style*="position: fixed"][style*="background"][class*="overlay"],
+div[style*="z-index"][style*="position: fixed"][style*="background"][class*="modal"],
+div[style*="z-index: 9999"],
+div[style*="z-index: 99999"],
+div[style*="z-index: 999999"],
+div[style*="z-index: 2147483647"] {
+  /* Only hide if they match anti-adblock patterns — JS handles the smart detection */
+}
+
+/* Restore scroll when paywalls/anti-adblock use overflow:hidden on body */
 html.tp-modal-open,
 body.tp-modal-open,
 html.pw-open,
 body.pw-open,
 body.no-scroll,
 body.noscroll,
-body.modal-open {
+body.modal-open,
+html.adblock-modal-open,
+body.adblock-modal-open,
+body.scroll-locked,
+body.is-locked,
+body.has-overlay,
+html.has-overlay,
+body.overflow-hidden,
+html.overflow-hidden {
   overflow: auto !important;
   position: static !important;
 }

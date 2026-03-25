@@ -14,5 +14,8 @@ Desktop.ini
 *.crx
 archive/
 
+# Chrome extension metadata (generated when loaded unpacked)
+_metadata/
+
 # Logs
 *.log
