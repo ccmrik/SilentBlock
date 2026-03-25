@@ -112,4 +112,55 @@
     window.googletag.setAdIframeTitle = noopFn;
     window.googletag.sizeMapping = function () { return { addSize: noopThis, build: function () { return []; } }; };
   }
+
+  // === Block blur filters from being applied by any script ===
+  // Intercept CSSStyleDeclaration.setProperty to block blur
+  var origSetProperty = CSSStyleDeclaration.prototype.setProperty;
+  CSSStyleDeclaration.prototype.setProperty = function (prop, value, priority) {
+    if ((prop === 'filter' || prop === '-webkit-filter' || prop === 'backdrop-filter' || prop === '-webkit-backdrop-filter') &&
+        typeof value === 'string' && value.includes('blur')) {
+      return;
+    }
+    return origSetProperty.call(this, prop, value, priority);
+  };
+
+  // Intercept direct .filter and .backdropFilter property assignment
+  var props = [
+    ['filter', 'filter'],
+    ['webkitFilter', '-webkit-filter'],
+    ['backdropFilter', 'backdrop-filter'],
+    ['webkitBackdropFilter', '-webkit-backdrop-filter']
+  ];
+  props.forEach(function (pair) {
+    var jsName = pair[0];
+    try {
+      var desc = Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, jsName);
+      if (desc && desc.set) {
+        var origSet = desc.set;
+        Object.defineProperty(CSSStyleDeclaration.prototype, jsName, {
+          get: desc.get,
+          set: function (val) {
+            if (typeof val === 'string' && val.includes('blur')) {
+              return;
+            }
+            return origSet.call(this, val);
+          },
+          configurable: true,
+          enumerable: true
+        });
+      }
+    } catch (e) {}
+  });
+
+  // Also intercept classList.add to block blur-related classes
+  var origAdd = DOMTokenList.prototype.add;
+  DOMTokenList.prototype.add = function () {
+    var args = Array.prototype.slice.call(arguments);
+    var filtered = args.filter(function (cls) {
+      return !/\bblur\b/i.test(cls);
+    });
+    if (filtered.length > 0) {
+      return origAdd.apply(this, filtered);
+    }
+  };
 })();
