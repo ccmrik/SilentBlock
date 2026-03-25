@@ -57,99 +57,8 @@
     }
   }
 
-  // --- Neutralize common adblock detection libraries ---
-  function neutralizeDetectors() {
-    const scriptEl = document.createElement('script');
-    scriptEl.textContent = `
-      // BlockAdBlock / FuckAdBlock / FAB
-      (function() {
-        var noopFn = function() { return this; };
-        var noopThis = function() { return this; };
-
-        // BlockAdBlock
-        var FakeBAB = function() {};
-        FakeBAB.prototype.on = noopThis;
-        FakeBAB.prototype.onDetected = noopThis;
-        FakeBAB.prototype.onNotDetected = function(fn) { if (typeof fn === 'function') try { fn(); } catch(e) {} return this; };
-        FakeBAB.prototype.setOption = noopThis;
-        FakeBAB.prototype.check = noopThis;
-        FakeBAB.prototype.emitEvent = noopThis;
-        FakeBAB.prototype.clearEvent = noopThis;
-
-        window.blockAdBlock = new FakeBAB();
-        window.BlockAdBlock = FakeBAB;
-
-        // FuckAdBlock (same interface)
-        window.fuckAdBlock = window.blockAdBlock;
-        window.FuckAdBlock = FakeBAB;
-        window.fAB = window.blockAdBlock;
-
-        // sniffAdBlock
-        window.sniffAdBlock = window.blockAdBlock;
-
-        // Admiral / ad-block detection
-        window.admiral = window.admiral || {};
-        window.admiral.adblockDetected = false;
-
-        // Generic detection flags
-        window.adBlockDetected = false;
-        window.adblockDetected = false;
-        window.canRunAds = true;
-        window.canShowAds = true;
-        window.isAdBlockActive = false;
-
-        // Google Ad Sense spoofing
-        window.adsbygoogle = window.adsbygoogle || [];
-        if (!window.adsbygoogle.loaded) {
-          window.adsbygoogle.loaded = true;
-          window.adsbygoogle.push = function() {};
-        }
-
-        // GPT (Google Publisher Tags) spoofing
-        window.googletag = window.googletag || {};
-        window.googletag.cmd = window.googletag.cmd || [];
-        window.googletag.apiReady = true;
-        window.googletag.pubadsReady = true;
-        if (!window.googletag.pubads) {
-          var pa = {
-            addEventListener: noopFn, clear: noopFn, clearCategoryExclusions: noopThis,
-            clearTagForChildDirectedTreatment: noopThis, clearTargeting: noopThis,
-            collapseEmptyDivs: noopFn, defineOutOfPagePassback: function() { return { display: noopFn, addService: noopThis }; },
-            definePassback: function() { return { display: noopFn, addService: noopThis, setTargeting: noopThis }; },
-            disableInitialLoad: noopFn, display: noopFn, enableAsyncRendering: noopFn,
-            enableLazyLoad: noopFn, enableSingleRequest: noopFn, enableVideoAds: noopFn,
-            get: noopFn, getAttributeKeys: function() { return []; }, getCorrelator: noopFn,
-            getSlotIdMap: function() { return {}; }, getSlots: function() { return []; },
-            getTargeting: function() { return []; }, getTargetingKeys: function() { return []; },
-            isInitialLoadDisabled: function() { return false; },
-            refresh: noopFn, removeEventListener: noopFn, set: noopThis,
-            setCategoryExclusion: noopThis, setCentering: noopFn,
-            setCookieOptions: noopThis, setForceSafeFrame: noopThis,
-            setLocation: noopThis, setPrivacySettings: noopThis,
-            setPublisherProvidedId: noopThis, setRequestNonPersonalizedAds: noopThis,
-            setSafeFrameConfig: noopThis, setTagForChildDirectedTreatment: noopThis,
-            setTargeting: noopThis, setVideoContent: noopThis,
-            updateCorrelator: noopFn
-          };
-          window.googletag.pubads = function() { return pa; };
-          window.googletag.companionAds = function() { return { addEventListener: noopFn, enableSyncLoading: noopFn, setRefreshUnfilledSlots: noopFn }; };
-          window.googletag.content = function() { return { addEventListener: noopFn, setContent: noopFn }; };
-          window.googletag.defineSlot = function() { return { addService: noopThis, clearCategoryExclusions: noopThis, clearTargeting: noopThis, defineSizeMapping: noopThis, get: noopFn, getAdUnitPath: noopFn, getAttributeKeys: function() { return []; }, getCategoryExclusions: function() { return []; }, getResponseInformation: noopFn, getSlotElementId: noopFn, getTargeting: function() { return []; }, getTargetingKeys: function() { return []; }, set: noopThis, setCategoryExclusion: noopThis, setClickUrl: noopThis, setCollapseEmptyDiv: noopThis, setForceSafeFrame: noopThis, setSafeFrameConfig: noopThis, setTargeting: noopThis, updateTargetingFromMap: noopThis }; };
-          window.googletag.defineOutOfPageSlot = window.googletag.defineSlot;
-          window.googletag.destroySlots = noopFn;
-          window.googletag.disablePublisherConsole = noopFn;
-          window.googletag.display = noopFn;
-          window.googletag.enableServices = noopFn;
-          window.googletag.getVersion = function() { return '2022070401'; };
-          window.googletag.openConsole = noopFn;
-          window.googletag.setAdIframeTitle = noopFn;
-          window.googletag.sizeMapping = function() { return { addSize: noopThis, build: function() { return []; } }; };
-        }
-      })();
-    `;
-    (document.head || document.documentElement).appendChild(scriptEl);
-    scriptEl.remove();
-  }
+  // Note: Ad detection spoofing (neutralizeDetectors) is now in spoof.js
+  // which runs in MAIN world to avoid CSP inline-script violations.
 
   // --- Detect and destroy anti-adblock overlays and modals ---
   const ANTI_ADBLOCK_TEXT = [
@@ -263,21 +172,24 @@
     } catch (_) { /* ignore selector issues */ }
   }
 
-  // --- Nuke overlay scroll-locks ---
+  // --- Nuke overlay scroll-locks and interaction-blockers ---
   function restoreScroll() {
     const html = document.documentElement;
     const body = document.body;
     if (!body) return;
 
-    // Remove overflow:hidden from html and body
+    // Remove overflow:hidden and pointer-events:none from html and body
     for (const el of [html, body]) {
       const s = getComputedStyle(el);
       if (s.overflow === 'hidden' || s.overflowY === 'hidden') {
         el.style.setProperty('overflow', 'auto', 'important');
         el.style.setProperty('overflow-y', 'auto', 'important');
       }
-      if (s.position === 'fixed' || s.position === 'sticky') {
+      if (s.position === 'fixed') {
         el.style.setProperty('position', 'static', 'important');
+      }
+      if (s.pointerEvents === 'none') {
+        el.style.setProperty('pointer-events', 'auto', 'important');
       }
     }
 
@@ -286,6 +198,24 @@
     for (const cls of lockClasses) {
       html.classList.remove(cls);
       body.classList.remove(cls);
+    }
+
+    // Remove any full-screen transparent overlay blocking pointer events
+    const fixedEls = document.querySelectorAll('div[style*="position: fixed"], div[style*="position:fixed"]');
+    for (const el of fixedEls) {
+      const s = getComputedStyle(el);
+      if (s.position !== 'fixed') continue;
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      if (w >= window.innerWidth * 0.9 && h >= window.innerHeight * 0.9) {
+        const opacity = parseFloat(s.opacity);
+        const bg = s.backgroundColor;
+        // Transparent or nearly-transparent full-screen overlay
+        if (opacity === 0 || bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)' ||
+            (s.pointerEvents !== 'none' && !el.textContent.trim())) {
+          el.style.setProperty('pointer-events', 'none', 'important');
+        }
+      }
     }
   }
 
@@ -313,7 +243,6 @@
 
   // --- Init ---
   function init() {
-    neutralizeDetectors();
     plantBait();
     hideAds();
     restoreScroll();
@@ -328,9 +257,6 @@
     setTimeout(findAndDestroyAntiAdblockOverlays, 3000);
     setTimeout(findAndDestroyAntiAdblockOverlays, 6000);
   }
-
-  // Neutralize detectors as early as possible (before DOMContentLoaded)
-  neutralizeDetectors();
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

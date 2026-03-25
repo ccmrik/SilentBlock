@@ -198,10 +198,10 @@ iframe[id^="google_ads_"] {
 }
 
 /* === Paywall / access nags === */
-[class*="paywall"],
-[id*="paywall"],
-[class*="meter-"],
-[class*="piano-"],
+[class*="paywall-overlay"],
+[class*="paywall-modal"],
+[id*="paywall-overlay"],
+[id*="paywall-modal"],
 .tp-modal,
 .tp-backdrop,
 .pw-overlay {
@@ -209,14 +209,7 @@ iframe[id^="google_ads_"] {
 }
 
 /* === Anti-adblock walls and overlays === */
-[class*="adblock"],
-[id*="adblock"],
-[class*="ad-block"],
-[id*="ad-block"],
-[class*="adblocker"],
-[id*="adblocker"],
-[class*="ad-blocker"],
-[id*="ad-blocker"],
+/* Use specific selectors only — avoid broad [class*="adblock"] which breaks sites */
 [class*="adblock-modal"],
 [class*="adblock-overlay"],
 [class*="adblock-notice"],
@@ -278,4 +271,9 @@ body.overflow-hidden,
 html.overflow-hidden {
   overflow: auto !important;
   position: static !important;
+}
+
+/* Ensure html and body never lose pointer interactivity */
+html, body {
+  pointer-events: auto !important;
 }
