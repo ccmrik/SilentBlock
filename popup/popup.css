@@ -26,6 +26,37 @@ body {
   margin-bottom: 16px;
 }
 
+/* Update banner */
+.update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1e3a2f;
+  border: 1px solid #00d26a;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+.update-banner span {
+  color: #86efac;
+}
+
+.update-banner a {
+  color: #00d26a;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #064e3b;
+}
+
+.update-banner a:hover {
+  background: #065f46;
+}
+
 .shield {
   color: #00d26a;
   flex-shrink: 0;

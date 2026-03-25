@@ -1,19 +1,23 @@
 {
   "manifest_version": 3,
   "name": "SilentBlock",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Free, silent ad blocker. No ads, no nags, no subscriptions. Ever.",
+  "update_url": "https://raw.githubusercontent.com/ccmrik/SilentBlock/main/updates.xml",
   "browser_specific_settings": {
     "gecko": {
       "id": "silentblock@local",
-      "strict_min_version": "128.0"
+      "strict_min_version": "128.0",
+      "update_url": "https://raw.githubusercontent.com/ccmrik/SilentBlock/main/updates.json"
     }
   },
   "permissions": [
     "declarativeNetRequest",
     "storage",
     "activeTab",
-    "tabs"
+    "tabs",
+    "notifications",
+    "alarms"
   ],
   "host_permissions": [
     "<all_urls>"

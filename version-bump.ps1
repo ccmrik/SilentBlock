@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Bumps the version in manifest.json, commits, and tags.
+  Bumps the version in manifest.json, updates.xml, updates.json, commits, and tags.
 
 .PARAMETER Part
   Which part to bump: major, minor, or patch (default: patch)
@@ -16,7 +16,10 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$manifestPath = Join-Path $PSScriptRoot 'manifest.json'
+$root = $PSScriptRoot
+$manifestPath = Join-Path $root 'manifest.json'
+$updatesXmlPath = Join-Path $root 'updates.xml'
+$updatesJsonPath = Join-Path $root 'updates.json'
 
 # Read and parse
 $json = Get-Content $manifestPath -Raw | ConvertFrom-Json
@@ -40,15 +43,32 @@ switch ($Part) {
 
 $newVersion = "$major.$minor.$patch"
 
-# Update manifest.json (preserve formatting by doing a string replace)
+# Update manifest.json
 $raw = Get-Content $manifestPath -Raw
 $raw = $raw -replace """version"":\s*""$([regex]::Escape($oldVersion))""", """version"": ""$newVersion"""
 Set-Content $manifestPath -Value $raw -NoNewline
+Write-Host "manifest.json: $oldVersion -> $newVersion" -ForegroundColor Green
+
+# Update updates.xml (Chromium auto-update)
+if (Test-Path $updatesXmlPath) {
+  $xml = Get-Content $updatesXmlPath -Raw
+  $xml = $xml -replace "version='$([regex]::Escape($oldVersion))'", "version='$newVersion'"
+  Set-Content $updatesXmlPath -Value $xml -NoNewline
+  Write-Host "updates.xml: $oldVersion -> $newVersion" -ForegroundColor Green
+}
+
+# Update updates.json (Firefox auto-update)
+if (Test-Path $updatesJsonPath) {
+  $jsonFile = Get-Content $updatesJsonPath -Raw
+  $jsonFile = $jsonFile -replace """version"":\s*""$([regex]::Escape($oldVersion))""", """version"": ""$newVersion"""
+  Set-Content $updatesJsonPath -Value $jsonFile -NoNewline
+  Write-Host "updates.json: $oldVersion -> $newVersion" -ForegroundColor Green
+}
 
 Write-Host "Version bumped: $oldVersion -> $newVersion" -ForegroundColor Green
 
 # Git operations
-git add manifest.json
+git add manifest.json updates.xml updates.json
 git commit -m "Bump version to $newVersion"
 git tag "v$newVersion"
 

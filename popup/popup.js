@@ -5,6 +5,9 @@ const api = typeof browser !== 'undefined' ? browser : chrome;
 const globalToggle = document.getElementById('globalToggle');
 const siteToggle = document.getElementById('siteToggle');
 const siteName = document.getElementById('siteName');
+const updateBanner = document.getElementById('updateBanner');
+const updateText = document.getElementById('updateText');
+const updateLink = document.getElementById('updateLink');
 
 let currentHostname = '';
 
@@ -20,6 +23,13 @@ api.runtime.sendMessage({ type: 'getState' }, (res) => {
 
   if (!res.enabled) {
     siteToggle.disabled = true;
+  }
+
+  // Show update banner if available
+  if (res.updateAvailable) {
+    updateText.textContent = `v${res.updateAvailable} available`;
+    updateLink.href = res.updateUrl || '#';
+    updateBanner.style.display = 'flex';
   }
 });
 
