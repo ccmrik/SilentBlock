@@ -193,6 +193,25 @@
       }
     }
 
+    // Remove blur filters applied by anti-adblock scripts
+    for (const el of [html, body]) {
+      const s = getComputedStyle(el);
+      if (s.filter && s.filter !== 'none') {
+        el.style.setProperty('filter', 'none', 'important');
+      }
+      if (s.webkitFilter && s.webkitFilter !== 'none') {
+        el.style.setProperty('-webkit-filter', 'none', 'important');
+      }
+    }
+    // Also check common content wrappers for blur
+    const blurCandidates = document.querySelectorAll('main, article, [role="main"], #content, #main, [class*="content"], [class*="article"], [class*="page-wrap"], [class*="site-wrap"]');
+    for (const el of blurCandidates) {
+      const s = getComputedStyle(el);
+      if (s.filter && s.filter !== 'none' && s.filter.includes('blur')) {
+        el.style.setProperty('filter', 'none', 'important');
+      }
+    }
+
     // Remove known scroll-lock classes
     const lockClasses = ['no-scroll', 'noscroll', 'modal-open', 'tp-modal-open', 'pw-open', 'scroll-locked', 'is-locked', 'has-overlay', 'overflow-hidden', 'adblock-modal-open'];
     for (const cls of lockClasses) {
