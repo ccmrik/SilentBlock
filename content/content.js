@@ -93,6 +93,13 @@
   }
 
   function findAndDestroyAntiAdblockOverlays() {
+    // Strategy 0: Remove anti-adblock <dialog> elements (Valnet sites use dialog.adblock with ::backdrop blur)
+    const adblockDialogs = document.querySelectorAll('dialog.adblock, dialog[class*="adblock"], dialog[data-promotion-zone]');
+    for (const dlg of adblockDialogs) {
+      if (dlg.open) dlg.close();
+      dlg.remove();
+    }
+
     // Strategy 1: Find modals/overlays by position + z-index containing anti-adblock text
     const allEls = document.querySelectorAll('div, section, aside, dialog, [role="dialog"], [role="alertdialog"]');
     for (const el of allEls) {

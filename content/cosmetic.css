@@ -210,6 +210,24 @@ iframe[id^="google_ads_"] {
 
 /* === Anti-adblock walls and overlays === */
 /* Use specific selectors only — avoid broad [class*="adblock"] which breaks sites */
+dialog.adblock,
+dialog[class*="adblock"],
+dialog[data-promotion-zone] {
+  display: none !important;
+}
+
+/* Neutralize dialog::backdrop blur from anti-adblock */
+dialog.adblock::backdrop,
+dialog[class*="adblock"]::backdrop,
+dialog[data-promotion-zone]::backdrop {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  background: transparent !important;
+  display: none !important;
+}
+
 [class*="adblock-modal"],
 [class*="adblock-overlay"],
 [class*="adblock-notice"],
