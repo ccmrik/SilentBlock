@@ -148,3 +148,16 @@ body {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* Stats */
+.stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.count {
+  font-size: 16px;
+  font-weight: 700;
+  color: #00d26a;
+}

@@ -48,3 +48,10 @@ siteToggle.addEventListener('change', () => {
     disable: !siteToggle.checked,
   });
 });
+
+// Load blocked ad count
+api.runtime.sendMessage({ type: 'getAdCount' }, (res) => {
+  if (res && typeof res.count === 'number') {
+    document.getElementById('adCount').textContent = res.count;
+  }
+});

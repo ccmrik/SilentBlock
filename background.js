@@ -49,7 +49,7 @@ async function checkForUpdate() {
       // Show browser notification
       api.notifications.create('silentblock-update', {
         type: 'basic',
-        iconUrl: 'icons/icon128.png',
+        iconUrl: 'icons/icon-on-128.png',
         title: 'SilentBlock Update Available',
         message: `Version ${remoteVersion} is available (you have ${localVersion}). Click the SilentBlock icon to update.`
       });
@@ -90,16 +90,31 @@ function domainToId(domain) {
   return (Math.abs(hash) % 900000) + 100000;
 }
 
+function setIcon(enabled) {
+  const state = enabled ? 'on' : 'off';
+  api.action.setIcon({
+    path: {
+      16: `icons/icon-${state}-16.png`,
+      48: `icons/icon-${state}-48.png`,
+      128: `icons/icon-${state}-128.png`
+    }
+  });
+}
+
 api.runtime.onInstalled.addListener(() => {
   api.storage.local.set({
     enabled: true,
     disabledSites: []
   });
-  api.action.setBadgeBackgroundColor({ color: '#00d26a' });
-  api.action.setBadgeText({ text: 'ON' });
+  setIcon(true);
 
   // Check for updates on install/update
   checkForUpdate();
+});
+
+// Set correct icon on service worker startup
+api.storage.local.get('enabled', (data) => {
+  setIcon(data.enabled !== false);
 });
 
 api.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -170,17 +185,32 @@ api.runtime.onMessage.addListener((message, sender, sendResponse) => {
       api.declarativeNetRequest.updateEnabledRulesets({
         enableRulesetIds: ['rules']
       });
-      api.action.setBadgeText({ text: 'ON' });
-      api.action.setBadgeBackgroundColor({ color: '#00d26a' });
     } else {
       api.declarativeNetRequest.updateEnabledRulesets({
         disableRulesetIds: ['rules']
       });
-      api.action.setBadgeText({ text: 'OFF' });
-      api.action.setBadgeBackgroundColor({ color: '#666' });
     }
+    setIcon(enabled);
     api.storage.local.set({ enabled });
     sendResponse({ success: true });
+    return true;
+  }
+
+  if (message.type === 'adCount') {
+    // Store per-tab ad count from content script
+    if (sender.tab) {
+      api.storage.session.set({ ['adCount_' + sender.tab.id]: message.count });
+    }
+    return false;
+  }
+
+  if (message.type === 'getAdCount') {
+    api.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs[0]) { sendResponse({ count: 0 }); return; }
+      api.storage.session.get('adCount_' + tabs[0].id, (data) => {
+        sendResponse({ count: data['adCount_' + tabs[0].id] || 0 });
+      });
+    });
     return true;
   }
 });

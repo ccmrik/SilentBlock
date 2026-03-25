@@ -165,16 +165,30 @@
 
   const SELECTOR_STRING = AD_SELECTORS.join(',');
 
+  let adsBlocked = 0;
+
   function hideAds() {
     try {
       const els = document.querySelectorAll(SELECTOR_STRING);
+      let newBlocked = 0;
       for (let i = 0; i < els.length; i++) {
+        if (!els[i].dataset.sbHidden) {
+          els[i].dataset.sbHidden = '1';
+          newBlocked++;
+        }
         const s = els[i].style;
         s.setProperty('display', 'none', 'important');
         s.setProperty('visibility', 'hidden', 'important');
         s.setProperty('height', '0', 'important');
         s.setProperty('min-height', '0', 'important');
         s.setProperty('overflow', 'hidden', 'important');
+      }
+      if (newBlocked > 0) {
+        adsBlocked += newBlocked;
+        try {
+          const api = typeof browser !== 'undefined' ? browser : chrome;
+          api.runtime.sendMessage({ type: 'adCount', count: adsBlocked });
+        } catch (_) {}
       }
     } catch (_) { /* ignore selector issues */ }
   }
