@@ -203,14 +203,8 @@
         el.style.setProperty('-webkit-filter', 'none', 'important');
       }
     }
-    // Also check common content wrappers for blur
-    const blurCandidates = document.querySelectorAll('main, article, [role="main"], #content, #main, [class*="content"], [class*="article"], [class*="page-wrap"], [class*="site-wrap"]');
-    for (const el of blurCandidates) {
-      const s = getComputedStyle(el);
-      if (s.filter && s.filter !== 'none' && s.filter.includes('blur')) {
-        el.style.setProperty('filter', 'none', 'important');
-      }
-    }
+    // Sweep ALL elements for blur filters (sites apply blur to various wrappers)
+    removeBlurFromAll();
 
     // Remove known scroll-lock classes
     const lockClasses = ['no-scroll', 'noscroll', 'modal-open', 'tp-modal-open', 'pw-open', 'scroll-locked', 'is-locked', 'has-overlay', 'overflow-hidden', 'adblock-modal-open'];
@@ -238,22 +232,48 @@
     }
   }
 
+  // --- Remove blur from any element on the page ---
+  function removeBlurFromAll() {
+    // Check elements with inline style containing blur
+    const blurred = document.querySelectorAll('[style*="blur"], [style*="filter"]');
+    for (const el of blurred) {
+      const s = getComputedStyle(el);
+      if (s.filter && s.filter !== 'none' && s.filter.includes('blur')) {
+        el.style.setProperty('filter', 'none', 'important');
+      }
+    }
+    // Also check common structural elements that may get blur via stylesheet
+    const structural = document.querySelectorAll('main, article, section, [role="main"], #content, #main, #wrapper, #app, .wrapper, .content, .main-content, .site-content, .page-content, .article-body');
+    for (const el of structural) {
+      const s = getComputedStyle(el);
+      if (s.filter && s.filter !== 'none' && s.filter.includes('blur')) {
+        el.style.setProperty('filter', 'none', 'important');
+      }
+    }
+  }
+
   // --- Mutation observer for dynamically inserted ads & anti-adblock ---
   let antiAdblockCheckScheduled = false;
 
   const observer = new MutationObserver((mutations) => {
     let newContent = false;
+    let styleChanged = false;
     for (const m of mutations) {
-      if (m.addedNodes.length > 0) { newContent = true; break; }
+      if (m.addedNodes.length > 0) { newContent = true; }
+      if (m.type === 'attributes' && m.attributeName === 'style') { styleChanged = true; }
+      if (m.type === 'attributes' && m.attributeName === 'class') { styleChanged = true; }
+      if (newContent && styleChanged) break;
     }
     if (newContent) {
       hideAds();
-
+    }
+    if (newContent || styleChanged) {
       // Debounce anti-adblock checks (they're heavier)
       if (!antiAdblockCheckScheduled) {
         antiAdblockCheckScheduled = true;
         setTimeout(() => {
           findAndDestroyAntiAdblockOverlays();
+          removeBlurFromAll();
           antiAdblockCheckScheduled = false;
         }, 300);
       }
@@ -269,12 +289,16 @@
     observer.observe(document.documentElement, {
       childList: true,
       subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class'],
     });
 
-    // Run anti-adblock checks after page settles (many walls appear after a delay)
-    setTimeout(findAndDestroyAntiAdblockOverlays, 1000);
-    setTimeout(findAndDestroyAntiAdblockOverlays, 3000);
-    setTimeout(findAndDestroyAntiAdblockOverlays, 6000);
+    // Run anti-adblock + deblur checks after page settles (walls/blur appear after delay)
+    const postLoadCheck = () => { findAndDestroyAntiAdblockOverlays(); removeBlurFromAll(); };
+    setTimeout(postLoadCheck, 1000);
+    setTimeout(postLoadCheck, 3000);
+    setTimeout(postLoadCheck, 6000);
+    setTimeout(postLoadCheck, 10000);
   }
 
   if (document.readyState === 'loading') {

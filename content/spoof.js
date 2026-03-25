@@ -41,15 +41,18 @@
   window.isAdBlockActive = false;
 
   // === Valnet network (CarBuzz, ScreenRant, GameRant, etc.) ===
-  window.VALNET_GLOBAL_ISADBLOCK = false;
-  // Prevent Valnet from overwriting with true later
+  // Freeze as accessor property so Valnet cannot overwrite with true
   try {
     Object.defineProperty(window, 'VALNET_GLOBAL_ISADBLOCK', {
       get: function () { return false; },
       set: function () {},
-      configurable: false
+      configurable: false,
+      enumerable: true
     });
-  } catch (e) {}
+  } catch (e) {
+    // Fallback if defineProperty fails
+    window.VALNET_GLOBAL_ISADBLOCK = false;
+  }
 
   // === Google AdSense spoofing ===
   window.adsbygoogle = window.adsbygoogle || [];
