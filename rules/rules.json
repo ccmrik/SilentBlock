@@ -525,5 +525,96 @@
       "urlFilter": "*/ads/ga-audiences*",
       "resourceTypes": ["image", "xmlhttprequest", "ping"]
     }
+  },
+
+  {
+    "id": 31,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "*/gtag/js",
+      "resourceTypes": ["script"]
+    }
+  },
+  {
+    "id": 32,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "*/gtm.js",
+      "resourceTypes": ["script"]
+    }
+  },
+  {
+    "id": 33,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "*/g/collect",
+      "resourceTypes": ["image", "xmlhttprequest", "ping", "other"]
+    }
+  },
+  {
+    "id": 34,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "*/j/collect",
+      "resourceTypes": ["image", "xmlhttprequest", "ping", "other"]
+    }
+  },
+  {
+    "id": 35,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "*/r/collect",
+      "resourceTypes": ["image", "xmlhttprequest", "ping", "other"]
+    }
+  },
+  {
+    "id": 36,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "*/gtag/destination",
+      "resourceTypes": ["script", "xmlhttprequest"]
+    }
+  },
+  {
+    "id": 37,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "*/pagead/viewthroughconversion/*",
+      "resourceTypes": ["image", "xmlhttprequest", "ping", "script"]
+    }
+  },
+  {
+    "id": 38,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "*/pagead/landing*",
+      "resourceTypes": ["image", "xmlhttprequest", "ping", "script"]
+    }
+  },
+  {
+    "id": 39,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "*/_/js/k=*",
+      "resourceTypes": ["script"]
+    }
+  },
+  {
+    "id": 40,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "*/td?*&tid=G-*",
+      "resourceTypes": ["image", "xmlhttprequest", "ping", "other"]
+    }
   }
 ]

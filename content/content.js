@@ -142,6 +142,137 @@
     restoreScroll();
   }
 
+  // --- Facebook sponsored ad blocking ---
+  const isFacebook = location.hostname === 'www.facebook.com' || location.hostname === 'web.facebook.com' || location.hostname === 'm.facebook.com';
+
+  // Strip zero-width/invisible Unicode chars that Facebook injects to break text matching
+  function stripFbObfuscation(str) {
+    // Remove zero-width characters, soft hyphens, direction marks, joiners, etc.
+    return str.replace(/[\u200B\u200C\u200D\u200E\u200F\uFEFF\u00AD\u034F\u061C\u2060-\u2064\u206A-\u206F\u2800\u180E\u3164\uFFA0\u115F\u1160\u3000]/g, '');
+  }
+
+  function hideFacebookSponsoredPosts() {
+    if (!isFacebook) return;
+    let newCount = 0;
+
+    // APPROACH: Walk ALL text nodes in the page using TreeWalker.
+    // Find any text node that, after stripping invisible chars, contains "Sponsored".
+    // Then walk up from that text node to find the enclosing post container and hide it.
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+
+    const sponsoredNodes = [];
+    let textNode;
+    while ((textNode = walker.nextNode())) {
+      const raw = textNode.nodeValue || '';
+      // Quick pre-filter: must have at least an 'S' and a 'p'
+      if (raw.indexOf('S') === -1 && raw.indexOf('s') === -1) continue;
+      const clean = stripFbObfuscation(raw).trim();
+      if (clean === 'Sponsored' || clean === 'sponsored') {
+        sponsoredNodes.push(textNode);
+      }
+    }
+
+    // For each "Sponsored" text node found, find & hide the post container
+    for (const node of sponsoredNodes) {
+      const post = findFbPostContainer(node.parentElement);
+      if (post && !post.dataset.sbFbHidden) {
+        post.dataset.sbFbHidden = '1';
+        post.style.setProperty('display', 'none', 'important');
+        newCount++;
+      }
+    }
+
+    // FALLBACK 1: Check <a> elements linking to /ads/about/
+    const adLinks = document.querySelectorAll('a[href*="/ads/about"], a[href*="ads/about"], a[href*="/ad_center/"]');
+    for (const link of adLinks) {
+      const post = findFbPostContainer(link);
+      if (post && !post.dataset.sbFbHidden) {
+        post.dataset.sbFbHidden = '1';
+        post.style.setProperty('display', 'none', 'important');
+        newCount++;
+      }
+    }
+
+    // FALLBACK 2: Check aria-label="Sponsored" on any element
+    const ariaSponsored = document.querySelectorAll('[aria-label="Sponsored"], [aria-label="sponsored"]');
+    for (const el of ariaSponsored) {
+      const post = findFbPostContainer(el);
+      if (post && !post.dataset.sbFbHidden) {
+        post.dataset.sbFbHidden = '1';
+        post.style.setProperty('display', 'none', 'important');
+        newCount++;
+      }
+    }
+
+    // FALLBACK 3: Check assembled text from parent spans
+    // Facebook sometimes splits "Sponsored" across child elements with no direct text node
+    // e.g. <span><span>S</span><span>p</span><span>o</span>...</span>
+    const allSpans = document.querySelectorAll('span');
+    for (const span of allSpans) {
+      if (span.dataset.sbChecked) continue;
+      // Only check small spans that could be the label
+      const rect = span.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) continue;
+      if (rect.width > 250 || rect.height > 40) continue;
+      // Get innerText (respects visibility) and check
+      const visible = stripFbObfuscation(span.innerText || '').replace(/\s+/g, '').trim();
+      if (visible === 'Sponsored' || visible === 'sponsored') {
+        span.dataset.sbChecked = '1';
+        const post = findFbPostContainer(span);
+        if (post && !post.dataset.sbFbHidden) {
+          post.dataset.sbFbHidden = '1';
+          post.style.setProperty('display', 'none', 'important');
+          newCount++;
+        }
+      }
+    }
+
+    if (newCount > 0) {
+      adsBlocked += newCount;
+      try {
+        const api = typeof browser !== 'undefined' ? browser : chrome;
+        api.runtime.sendMessage({ type: 'adCount', count: adsBlocked });
+      } catch (_) {}
+    }
+  }
+
+  function findFbPostContainer(el) {
+    // Walk up from an element to find the Facebook post container.
+    // ONLY return elements with a definitive structural marker.
+    // Never use a vague fallback — that risks hiding the entire page.
+    let node = el;
+    let depth = 0;
+
+    while (node && node !== document.body && depth < 30) {
+      if (node.nodeType === 1) { // Element node
+        // Check data-pagelet attribute (e.g. "FeedUnit_123", "StorySomething")
+        const pagelet = node.getAttribute('data-pagelet') || '';
+        if (pagelet.includes('FeedUnit') || pagelet.includes('Story')) return node;
+
+        // Check role="article"
+        if (node.getAttribute('role') === 'article') return node;
+
+        // Check if this is a direct child of [role="feed"]
+        const parent = node.parentElement;
+        if (parent) {
+          const parentRole = parent.getAttribute && parent.getAttribute('role');
+          if (parentRole === 'feed') return node;
+          const parentPagelet = parent.getAttribute && (parent.getAttribute('data-pagelet') || '');
+          if (parentPagelet === 'Feed' || parentPagelet === 'feed') return node;
+        }
+      }
+      node = node.parentElement;
+      depth++;
+    }
+
+    // No structural marker found — do NOT hide anything
+    return null;
+  }
+
   // --- Dynamic cosmetic filtering ---
   const AD_SELECTORS = [
     'ins.adsbygoogle',
@@ -162,6 +293,42 @@
     '.interstitial-ad',
     '.ad-interstitial',
   ];
+
+  // --- GTG (Google Tag Gateway) script detection ---
+  // Detect and remove <script> tags loading Google tracking via first-party proxied paths
+  const GTG_SCRIPT_PATTERNS = [
+    /\/gtag\/js/i,
+    /\/gtm\.js/i,
+    /\/gtag\/destination/i,
+    /\/analytics\.js.*google/i,
+    /googletagmanager\.com/i,
+    /google-analytics\.com/i,
+    /googlesyndication\.com/i,
+    /googleadservices\.com/i,
+    /pagead\/js\//i,
+    /pagead\/viewthroughconversion/i,
+    /adsbygoogle\.js/i,
+    /show_ads_impl/i,
+  ];
+
+  function isGtgScript(el) {
+    if (el.tagName !== 'SCRIPT') return false;
+    const src = el.src || el.getAttribute('src') || '';
+    if (!src) return false;
+    return GTG_SCRIPT_PATTERNS.some(re => re.test(src));
+  }
+
+  function neutralizeGtgScripts() {
+    const scripts = document.querySelectorAll('script[src]');
+    for (const script of scripts) {
+      if (script.dataset.sbNeutralized) continue;
+      if (isGtgScript(script)) {
+        script.dataset.sbNeutralized = '1';
+        // Remove the script to prevent execution (if not yet executed)
+        script.remove();
+      }
+    }
+  }
 
   const SELECTOR_STRING = AD_SELECTORS.join(',');
 
@@ -287,6 +454,8 @@
     }
     if (newContent) {
       hideAds();
+      neutralizeGtgScripts();
+      if (isFacebook) hideFacebookSponsoredPosts();
     }
     if (newContent || styleChanged) {
       // Debounce anti-adblock checks (they're heavier)
@@ -305,6 +474,8 @@
   function init() {
     plantBait();
     hideAds();
+    neutralizeGtgScripts();
+    hideFacebookSponsoredPosts();
     restoreScroll();
 
     observer.observe(document.documentElement, {
@@ -320,6 +491,18 @@
     setTimeout(postLoadCheck, 3000);
     setTimeout(postLoadCheck, 6000);
     setTimeout(postLoadCheck, 10000);
+
+    // Facebook: run sponsored post detection on scroll and periodically
+    if (isFacebook) {
+      // Periodic scan for sponsored posts loaded by infinite scroll
+      setInterval(hideFacebookSponsoredPosts, 2000);
+      // Also trigger on scroll (debounced)
+      let fbScrollTimer;
+      window.addEventListener('scroll', () => {
+        clearTimeout(fbScrollTimer);
+        fbScrollTimer = setTimeout(hideFacebookSponsoredPosts, 500);
+      }, { passive: true });
+    }
   }
 
   if (document.readyState === 'loading') {

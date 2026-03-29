@@ -55,10 +55,18 @@
   }
 
   // === Google AdSense spoofing ===
-  window.adsbygoogle = window.adsbygoogle || [];
-  if (!window.adsbygoogle.loaded) {
-    window.adsbygoogle.loaded = true;
-    window.adsbygoogle.push = function () {};
+  var fakeAdsByGoogle = [];
+  fakeAdsByGoogle.loaded = true;
+  fakeAdsByGoogle.push = function () {};
+  try {
+    Object.defineProperty(window, 'adsbygoogle', {
+      value: fakeAdsByGoogle,
+      writable: false,
+      configurable: false,
+      enumerable: true
+    });
+  } catch (e) {
+    window.adsbygoogle = fakeAdsByGoogle;
   }
 
   // === GPT (Google Publisher Tags) spoofing ===
@@ -112,6 +120,161 @@
     window.googletag.setAdIframeTitle = noopFn;
     window.googletag.sizeMapping = function () { return { addSize: noopThis, build: function () { return []; } }; };
   }
+
+  // Freeze googletag so GTG-proxied scripts cannot overwrite it
+  try {
+    Object.defineProperty(window, 'googletag', {
+      value: window.googletag,
+      writable: false,
+      configurable: false,
+      enumerable: true
+    });
+  } catch (e) {}
+
+  // === Google Tag (gtag.js) / GA4 / GTG Countermeasures ===
+  // Neutralize gtag() — the primary function used by Google Tag and GA4
+  // Must be frozen so first-party-proxied scripts can't reclaim it
+  try {
+    Object.defineProperty(window, 'gtag', {
+      value: function () {},
+      writable: false,
+      configurable: false,
+      enumerable: true
+    });
+  } catch (e) {
+    window.gtag = function () {};
+  }
+
+  // Neutralize ga() — Universal Analytics
+  var fakeGa = function () {};
+  fakeGa.create = noopFn;
+  fakeGa.getByName = function () { return null; };
+  fakeGa.getAll = function () { return []; };
+  fakeGa.remove = noopFn;
+  fakeGa.loaded = true;
+  fakeGa.q = [];
+  try {
+    Object.defineProperty(window, 'ga', {
+      value: fakeGa,
+      writable: false,
+      configurable: false,
+      enumerable: true
+    });
+  } catch (e) {
+    window.ga = fakeGa;
+  }
+
+  // Lock GoogleAnalyticsObject reference
+  try {
+    Object.defineProperty(window, 'GoogleAnalyticsObject', {
+      value: 'ga',
+      writable: false,
+      configurable: false
+    });
+  } catch (e) {}
+
+  // Neutralize __gtagTracker used by some WordPress GA plugins
+  try {
+    Object.defineProperty(window, '__gtagTracker', {
+      value: function () {},
+      writable: false,
+      configurable: false
+    });
+  } catch (e) {}
+
+  // Neutralize Google Ads conversion tracking
+  try {
+    Object.defineProperty(window, 'google_trackConversion', {
+      value: function () {},
+      writable: false,
+      configurable: false
+    });
+  } catch (e) {}
+
+  // === Tracking request interception ===
+  // Detect known Google tracking URL patterns (catches GTG first-party proxied endpoints)
+  var _sbTrackingRe = /\/(g|j|r)\/collect[?\b]|\/gtag\/js[?\b]|\/gtm\.js[?\b]|\/gtag\/destination|google-analytics\.com|analytics\.google\.com|googletagmanager\.com|pagead\/viewthroughconversion|pagead\/landing|doubleclick\.net|googlesyndication\.com|googleadservices\.com/i;
+
+  function _sbIsTrackingUrl(url) {
+    return _sbTrackingRe.test(url);
+  }
+
+  // Intercept navigator.sendBeacon for tracking payloads
+  var origBeacon = navigator.sendBeacon;
+  if (origBeacon) {
+    navigator.sendBeacon = function (url, data) {
+      if (_sbIsTrackingUrl(String(url || ''))) {
+        return true; // Pretend success
+      }
+      return origBeacon.call(navigator, url, data);
+    };
+  }
+
+  // Intercept fetch() for tracking requests
+  var origFetch = window.fetch;
+  window.fetch = function (input, init) {
+    var urlStr = '';
+    if (typeof input === 'string') {
+      urlStr = input;
+    } else if (input && input.url) {
+      urlStr = input.url;
+    }
+    if (urlStr && _sbIsTrackingUrl(urlStr)) {
+      return Promise.resolve(new Response('', { status: 200 }));
+    }
+    return origFetch.apply(window, arguments);
+  };
+
+  // Intercept XMLHttpRequest.open for tracking requests
+  var origXHROpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (method, url) {
+    this._sbUrl = String(url || '');
+    return origXHROpen.apply(this, arguments);
+  };
+  var origXHRSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send = function (body) {
+    if (this._sbUrl && _sbIsTrackingUrl(this._sbUrl)) {
+      // Simulate successful empty response
+      var self = this;
+      setTimeout(function () {
+        Object.defineProperty(self, 'readyState', { value: 4, configurable: true });
+        Object.defineProperty(self, 'status', { value: 200, configurable: true });
+        Object.defineProperty(self, 'responseText', { value: '', configurable: true });
+        Object.defineProperty(self, 'response', { value: '', configurable: true });
+        self.dispatchEvent(new Event('readystatechange'));
+        self.dispatchEvent(new Event('load'));
+        self.dispatchEvent(new Event('loadend'));
+      }, 0);
+      return;
+    }
+    return origXHRSend.apply(this, arguments);
+  };
+
+  // Intercept Image() constructor for tracking pixels
+  var OrigImage = window.Image;
+  window.Image = function (w, h) {
+    var img = new OrigImage(w, h);
+    var origSrcDesc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src') ||
+                      Object.getOwnPropertyDescriptor(img.__proto__, 'src');
+    if (origSrcDesc && origSrcDesc.set) {
+      var origSrcSet = origSrcDesc.set;
+      Object.defineProperty(img, 'src', {
+        get: origSrcDesc.get ? origSrcDesc.get.bind(img) : function () { return ''; },
+        set: function (val) {
+          if (_sbIsTrackingUrl(String(val || ''))) {
+            // Fire load event without actually loading
+            setTimeout(function () { img.dispatchEvent(new Event('load')); }, 0);
+            return;
+          }
+          return origSrcSet.call(img, val);
+        },
+        configurable: true,
+        enumerable: true
+      });
+    }
+    return img;
+  };
+  window.Image.prototype = OrigImage.prototype;
 
   // === Block blur filters from being applied by any script ===
   // Intercept CSSStyleDeclaration.setProperty to block blur

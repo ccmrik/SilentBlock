@@ -3,7 +3,7 @@
     "silentblock@local": {
       "updates": [
         {
-          "version": "1.4.1",
+          "version": "1.5.0",
           "update_link": "https://github.com/ccmrik/SilentBlock/releases/latest/download/SilentBlock.xpi"
         }
       ]

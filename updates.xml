@@ -9,6 +9,6 @@
 -->
 <gupdate xmlns='http://www.google.com/update2/response' protocol='2.0'>
   <app appid='silentblock@local'>
-    <updatecheck codebase='https://github.com/ccmrik/SilentBlock/releases/latest/download/SilentBlock.crx' version='1.4.1' />
+    <updatecheck codebase='https://github.com/ccmrik/SilentBlock/releases/latest/download/SilentBlock.crx' version='1.5.0' />
   </app>
 </gupdate>
