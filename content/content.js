@@ -320,19 +320,36 @@
 
   function neutralizeGtgScripts() {
     const scripts = document.querySelectorAll('script[src]');
+    let newBlocked = 0;
     for (const script of scripts) {
       if (script.dataset.sbNeutralized) continue;
       if (isGtgScript(script)) {
         script.dataset.sbNeutralized = '1';
-        // Remove the script to prevent execution (if not yet executed)
         script.remove();
+        newBlocked++;
       }
+    }
+    if (newBlocked > 0) {
+      adsBlocked += newBlocked;
+      try {
+        const api = typeof browser !== 'undefined' ? browser : chrome;
+        api.runtime.sendMessage({ type: 'adCount', count: adsBlocked });
+      } catch (_) {}
     }
   }
 
   const SELECTOR_STRING = AD_SELECTORS.join(',');
 
   let adsBlocked = 0;
+
+  // Listen for tracking interceptions from spoof.js (MAIN world → ISOLATED world)
+  document.addEventListener('__sb_blocked', () => {
+    adsBlocked++;
+    try {
+      const api = typeof browser !== 'undefined' ? browser : chrome;
+      api.runtime.sendMessage({ type: 'adCount', count: adsBlocked });
+    } catch (_) {}
+  });
 
   function hideAds() {
     try {

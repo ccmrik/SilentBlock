@@ -78,6 +78,25 @@ api.alarms.onAlarm.addListener((alarm) => {
 });
 
 // =============================================
+// TAB NAVIGATION TRACKING (for per-page ad counts)
+// =============================================
+
+// Track when each tab navigates so we count only current-page blocks
+api.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === 'loading') {
+    api.storage.session.set({
+      ['navTime_' + tabId]: Date.now(),
+      ['adCount_' + tabId]: 0
+    });
+  }
+});
+
+// Clean up when tabs close
+api.tabs.onRemoved.addListener((tabId) => {
+  api.storage.session.remove(['adCount_' + tabId, 'navTime_' + tabId]);
+});
+
+// =============================================
 // CORE LOGIC
 // =============================================
 
@@ -207,8 +226,21 @@ api.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'getAdCount') {
     api.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (!tabs[0]) { sendResponse({ count: 0 }); return; }
-      api.storage.session.get('adCount_' + tabs[0].id, (data) => {
-        sendResponse({ count: data['adCount_' + tabs[0].id] || 0 });
+      const tabId = tabs[0].id;
+      api.storage.session.get(['adCount_' + tabId, 'navTime_' + tabId], (data) => {
+        const cosmeticCount = data['adCount_' + tabId] || 0;
+        const navTime = data['navTime_' + tabId] || 0;
+
+        // Get network-level blocked count from declarativeNetRequest
+        // Works with activeTab permission (granted when popup opens)
+        api.declarativeNetRequest.getMatchedRules({ tabId, minTimeStamp: navTime })
+          .then((result) => {
+            const networkCount = result.rulesMatchedInfo ? result.rulesMatchedInfo.length : 0;
+            sendResponse({ count: cosmeticCount + networkCount });
+          })
+          .catch(() => {
+            sendResponse({ count: cosmeticCount });
+          });
       });
     });
     return true;

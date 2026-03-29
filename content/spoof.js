@@ -199,11 +199,17 @@
     return _sbTrackingRe.test(url);
   }
 
+  // Notify content script (ISOLATED world) about intercepted tracking requests
+  function _sbNotifyBlocked() {
+    try { document.dispatchEvent(new CustomEvent('__sb_blocked')); } catch (e) {}
+  }
+
   // Intercept navigator.sendBeacon for tracking payloads
   var origBeacon = navigator.sendBeacon;
   if (origBeacon) {
     navigator.sendBeacon = function (url, data) {
       if (_sbIsTrackingUrl(String(url || ''))) {
+        _sbNotifyBlocked();
         return true; // Pretend success
       }
       return origBeacon.call(navigator, url, data);
@@ -220,6 +226,7 @@
       urlStr = input.url;
     }
     if (urlStr && _sbIsTrackingUrl(urlStr)) {
+      _sbNotifyBlocked();
       return Promise.resolve(new Response('', { status: 200 }));
     }
     return origFetch.apply(window, arguments);
@@ -235,6 +242,7 @@
   XMLHttpRequest.prototype.send = function (body) {
     if (this._sbUrl && _sbIsTrackingUrl(this._sbUrl)) {
       // Simulate successful empty response
+      _sbNotifyBlocked();
       var self = this;
       setTimeout(function () {
         Object.defineProperty(self, 'readyState', { value: 4, configurable: true });
@@ -263,6 +271,7 @@
         set: function (val) {
           if (_sbIsTrackingUrl(String(val || ''))) {
             // Fire load event without actually loading
+            _sbNotifyBlocked();
             setTimeout(function () { img.dispatchEvent(new Event('load')); }, 0);
             return;
           }
