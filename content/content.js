@@ -522,9 +522,57 @@
     }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
+  // --- Site-disable: check if blocking is disabled for this site ---
+  function disableCosmeticCSS() {
+    // Disable the injected cosmetic.css stylesheet
+    function tryDisable() {
+      for (const sheet of document.styleSheets) {
+        try {
+          if (sheet.href && sheet.href.includes('cosmetic.css')) {
+            sheet.disabled = true;
+          }
+        } catch (_) {}
+      }
+    }
+    tryDisable();
+    // Retry after DOM is ready (stylesheets may not be enumerable yet)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', tryDisable);
+    }
   }
+
+  function checkAndInit() {
+    try {
+      const extApi = typeof browser !== 'undefined' ? browser : chrome;
+      const hostname = location.hostname;
+      extApi.storage.local.get(['enabled', 'disabledSites'], (data) => {
+        const enabled = data.enabled !== false;
+        const disabledSites = data.disabledSites || [];
+        const siteDisabled = !enabled || disabledSites.includes(hostname);
+
+        if (siteDisabled) {
+          // Signal spoof.js (MAIN world) to stop intercepting
+          document.dispatchEvent(new CustomEvent('__sb_disable'));
+          disableCosmeticCSS();
+          return;
+        }
+
+        // Site is active — run normally
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', init);
+        } else {
+          init();
+        }
+      });
+    } catch (_) {
+      // Extension context invalid (e.g. orphaned script) — run anyway
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    }
+  }
+
+  checkAndInit();
 })();

@@ -9,6 +9,11 @@
   var noopFn = function () { return this; };
   var noopThis = function () { return this; };
 
+  // === Site-disable support ===
+  // Content script (ISOLATED world) dispatches __sb_disable when site is allowlisted
+  var _sbActive = true;
+  document.addEventListener('__sb_disable', function () { _sbActive = false; });
+
   // === BlockAdBlock / FuckAdBlock / FAB ===
   var FakeBAB = function () {};
   FakeBAB.prototype.on = noopThis;
@@ -208,7 +213,7 @@
   var origBeacon = navigator.sendBeacon;
   if (origBeacon) {
     navigator.sendBeacon = function (url, data) {
-      if (_sbIsTrackingUrl(String(url || ''))) {
+      if (_sbActive && _sbIsTrackingUrl(String(url || ''))) {
         _sbNotifyBlocked();
         return true; // Pretend success
       }
@@ -225,7 +230,7 @@
     } else if (input && input.url) {
       urlStr = input.url;
     }
-    if (urlStr && _sbIsTrackingUrl(urlStr)) {
+    if (_sbActive && urlStr && _sbIsTrackingUrl(urlStr)) {
       _sbNotifyBlocked();
       return Promise.resolve(new Response('', { status: 200 }));
     }
@@ -240,7 +245,7 @@
   };
   var origXHRSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send = function (body) {
-    if (this._sbUrl && _sbIsTrackingUrl(this._sbUrl)) {
+    if (_sbActive && this._sbUrl && _sbIsTrackingUrl(this._sbUrl)) {
       // Simulate successful empty response
       _sbNotifyBlocked();
       var self = this;
@@ -269,7 +274,7 @@
       Object.defineProperty(img, 'src', {
         get: origSrcDesc.get ? origSrcDesc.get.bind(img) : function () { return ''; },
         set: function (val) {
-          if (_sbIsTrackingUrl(String(val || ''))) {
+          if (_sbActive && _sbIsTrackingUrl(String(val || ''))) {
             // Fire load event without actually loading
             _sbNotifyBlocked();
             setTimeout(function () { img.dispatchEvent(new Event('load')); }, 0);
