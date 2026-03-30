@@ -68,7 +68,7 @@ if (Test-Path $updatesJsonPath) {
 Write-Host "Version bumped: $oldVersion -> $newVersion" -ForegroundColor Green
 
 # Git operations
-git add manifest.json updates.xml updates.json
+git add -A
 git commit -m "Bump version to $newVersion"
 git tag "v$newVersion"
 

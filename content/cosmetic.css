@@ -1,3 +1,4 @@
+/* SILENTBLOCK_COSMETIC */
 /* SilentBlock — Cosmetic Filter Stylesheet */
 /* Hides common ad containers, banners, and annoyances */
 
@@ -98,6 +99,22 @@ amp-sticky-ad {
 [class*="sponsored-banner"],
 .promoted-content,
 .promoted-post {
+  display: none !important;
+}
+
+/* === Facebook / Meta sponsored ads === */
+/* Hide known Facebook ad containers and injected ad iframes */
+[data-pagelet*="FeedUnit"][data-sbfbhidden="1"],
+[role="article"][data-sbfbhidden="1"] {
+  display: none !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+/* Facebook Audience Network and ad iframes */
+iframe[src*="facebook.com/plugins/ad"],
+iframe[src*="fbcdn.net/ads"],
+[data-ad-preview],
+[data-ad-comet-preview] {
   display: none !important;
 }
 

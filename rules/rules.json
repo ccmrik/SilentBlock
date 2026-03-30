@@ -473,7 +473,6 @@
     "condition": {
       "requestDomains": [
         "zemanta.com",
-        "yahoo.com",
         "advertising.yahoo.com",
         "adtech.yahooinc.com",
         "ads.yahoo.com"
@@ -597,15 +596,6 @@
     "condition": {
       "urlFilter": "*/pagead/landing*",
       "resourceTypes": ["image", "xmlhttprequest", "ping", "script"]
-    }
-  },
-  {
-    "id": 39,
-    "priority": 1,
-    "action": { "type": "block" },
-    "condition": {
-      "urlFilter": "*/_/js/k=*",
-      "resourceTypes": ["script"]
     }
   },
   {

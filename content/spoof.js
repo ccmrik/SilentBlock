@@ -6,7 +6,7 @@
 // the page's own scripts run.
 
 (function () {
-  var noopFn = function () { return this; };
+  var noopFn = function () {};
   var noopThis = function () { return this; };
 
   // === Site-disable support ===
@@ -30,6 +30,7 @@
     // Restore intercepted APIs
     if (origBeacon) navigator.sendBeacon = origBeacon;
     window.fetch = origFetch;
+    window.open = origWindowOpen;
     XMLHttpRequest.prototype.open = origXHROpen;
     XMLHttpRequest.prototype.send = origXHRSend;
     window.Image = OrigImage;
@@ -86,7 +87,7 @@
     Object.defineProperty(window, 'VALNET_GLOBAL_ISADBLOCK', {
       get: function () { return false; },
       set: function () {},
-      configurable: true,
+      configurable: false,
       enumerable: true
     });
   } catch (e) {
@@ -337,6 +338,7 @@
   };
 
   // Intercept direct .filter and .backdropFilter property assignment
+  var _sbFilterDescs = [];
   var props = [
     ['filter', 'filter'],
     ['webkitFilter', '-webkit-filter'],
@@ -349,6 +351,7 @@
       var desc = Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, jsName);
       if (desc && desc.set) {
         var origSet = desc.set;
+        _sbFilterDescs.push({ name: jsName, desc: desc, origSet: origSet });
         Object.defineProperty(CSSStyleDeclaration.prototype, jsName, {
           get: desc.get,
           set: function (val) {
@@ -374,5 +377,23 @@
     if (filtered.length > 0) {
       return origAdd.apply(this, filtered);
     }
+  };
+
+  // === Popup blocker (MAIN world — intercepts page-initiated popups) ===
+  var _sbUserGesture = false;
+  function _sbMarkGesture() {
+    _sbUserGesture = true;
+    setTimeout(function () { _sbUserGesture = false; }, 1000);
+  }
+  document.addEventListener('click', _sbMarkGesture, true);
+  document.addEventListener('pointerup', _sbMarkGesture, true);
+  document.addEventListener('keydown', _sbMarkGesture, true);
+
+  var origWindowOpen = window.open;
+  window.open = function (url, name, features) {
+    if (!_sbActive || _sbUserGesture) {
+      return origWindowOpen.call(window, url, name, features);
+    }
+    return null;
   };
 })();

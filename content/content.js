@@ -4,26 +4,7 @@
 // Cosmetic filtering, popup prevention, and anti-adblock countermeasures
 
 (function () {
-  // --- Popup blocker ---
-  // Only allow window.open when triggered by a real user gesture
-  let userGesture = false;
-
-  function markGesture() {
-    userGesture = true;
-    setTimeout(() => { userGesture = false; }, 1000);
-  }
-
-  document.addEventListener('click', markGesture, true);
-  document.addEventListener('pointerup', markGesture, true);
-  document.addEventListener('keydown', markGesture, true);
-
-  const nativeOpen = window.open;
-  window.open = function (url, name, features) {
-    if (userGesture) {
-      return nativeOpen.call(window, url, name, features);
-    }
-    return null;
-  };
+  // Note: Popup blocker is in spoof.js (MAIN world) to intercept page-initiated popups.
 
   // =============================================
   // ANTI-ADBLOCK COUNTERMEASURES
