@@ -12,7 +12,42 @@
   // === Site-disable support ===
   // Content script (ISOLATED world) dispatches __sb_disable when site is allowlisted
   var _sbActive = true;
-  document.addEventListener('__sb_disable', function () { _sbActive = false; });
+  document.addEventListener('__sb_disable', function () {
+    _sbActive = false;
+
+    // Restore all overridden window properties so real ad scripts can load
+    var propsToRestore = ['adsbygoogle', 'googletag', 'gtag', 'ga',
+      'GoogleAnalyticsObject', '__gtagTracker', 'google_trackConversion',
+      'blockAdBlock', 'BlockAdBlock', 'fuckAdBlock', 'FuckAdBlock', 'fAB', 'sniffAdBlock',
+      'adBlockDetected', 'adblockDetected', 'canRunAds', 'canShowAds', 'isAdBlockActive'];
+    propsToRestore.forEach(function (prop) {
+      try {
+        Object.defineProperty(window, prop, { value: undefined, writable: true, configurable: true });
+        delete window[prop];
+      } catch (e) {}
+    });
+
+    // Restore intercepted APIs
+    if (origBeacon) navigator.sendBeacon = origBeacon;
+    window.fetch = origFetch;
+    XMLHttpRequest.prototype.open = origXHROpen;
+    XMLHttpRequest.prototype.send = origXHRSend;
+    window.Image = OrigImage;
+    CSSStyleDeclaration.prototype.setProperty = origSetProperty;
+    DOMTokenList.prototype.add = origAdd;
+
+    // Restore filter property interceptors
+    _sbFilterDescs.forEach(function (entry) {
+      try {
+        Object.defineProperty(CSSStyleDeclaration.prototype, entry.name, {
+          get: entry.desc.get,
+          set: entry.origSet,
+          configurable: true,
+          enumerable: true
+        });
+      } catch (e) {}
+    });
+  });
 
   // === BlockAdBlock / FuckAdBlock / FAB ===
   var FakeBAB = function () {};
@@ -51,7 +86,7 @@
     Object.defineProperty(window, 'VALNET_GLOBAL_ISADBLOCK', {
       get: function () { return false; },
       set: function () {},
-      configurable: false,
+      configurable: true,
       enumerable: true
     });
   } catch (e) {
@@ -67,7 +102,7 @@
     Object.defineProperty(window, 'adsbygoogle', {
       value: fakeAdsByGoogle,
       writable: false,
-      configurable: false,
+      configurable: true,
       enumerable: true
     });
   } catch (e) {
@@ -131,7 +166,7 @@
     Object.defineProperty(window, 'googletag', {
       value: window.googletag,
       writable: false,
-      configurable: false,
+      configurable: true,
       enumerable: true
     });
   } catch (e) {}
@@ -143,7 +178,7 @@
     Object.defineProperty(window, 'gtag', {
       value: function () {},
       writable: false,
-      configurable: false,
+      configurable: true,
       enumerable: true
     });
   } catch (e) {
@@ -162,7 +197,7 @@
     Object.defineProperty(window, 'ga', {
       value: fakeGa,
       writable: false,
-      configurable: false,
+      configurable: true,
       enumerable: true
     });
   } catch (e) {
@@ -174,7 +209,7 @@
     Object.defineProperty(window, 'GoogleAnalyticsObject', {
       value: 'ga',
       writable: false,
-      configurable: false
+      configurable: true
     });
   } catch (e) {}
 
@@ -183,7 +218,7 @@
     Object.defineProperty(window, '__gtagTracker', {
       value: function () {},
       writable: false,
-      configurable: false
+      configurable: true
     });
   } catch (e) {}
 
@@ -192,7 +227,7 @@
     Object.defineProperty(window, 'google_trackConversion', {
       value: function () {},
       writable: false,
-      configurable: false
+      configurable: true
     });
   } catch (e) {}
 

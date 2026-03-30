@@ -524,21 +524,24 @@
 
   // --- Site-disable: check if blocking is disabled for this site ---
   function disableCosmeticCSS() {
-    // Disable the injected cosmetic.css stylesheet
+    // Chrome injects manifest CSS as inline <style> elements (no href).
+    // Find by our marker comment and remove them.
     function tryDisable() {
-      for (const sheet of document.styleSheets) {
-        try {
-          if (sheet.href && sheet.href.includes('cosmetic.css')) {
-            sheet.disabled = true;
-          }
-        } catch (_) {}
+      const styles = document.querySelectorAll('style');
+      for (const el of styles) {
+        if (el.textContent && el.textContent.includes('SILENTBLOCK_COSMETIC')) {
+          el.media = 'not all'; // Effectively disables the stylesheet
+          el.dataset.sbDisabled = '1';
+        }
       }
     }
     tryDisable();
-    // Retry after DOM is ready (stylesheets may not be enumerable yet)
+    // Retry after DOM is ready (style elements may not exist yet at document_start)
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', tryDisable);
     }
+    // One more retry in case of late injection
+    setTimeout(tryDisable, 100);
   }
 
   function checkAndInit() {
